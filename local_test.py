@@ -11,12 +11,20 @@ ser = serial.Serial('/dev/ttyACM1', 115200)  # 请根据实际情况修改串口
 
 
 def Led_drive(led_values):
-    for i in range(Number_of_leds):
-        r, g, b = led_values[i]
-        message = f"l {i} {r} {g} {b}\n"
+    Led_index_list=[]
+    for i in led_values:
+        Led_index ,RGB= i
+        Led_index=Led_index%Number_of_leds
+        Led_index_list.append(Led_index)
+        r,g,b=RGB
+        message = f"l {Led_index} {r} {g} {b}\n"
         ser.write(message.encode('utf-8'))
-        #print(message)
         # rospy.loginfo(f"Sent: {message}")
+    # 使用numpy的集合操作来找出不在Led_index_list中的元素
+    Led_off_index_list = np.setdiff1d(np.arange(Number_of_leds), Led_index_list)
+    for i in Led_off_index_list:
+        message = f"l {i} {0} {0} {0}\n"
+        ser.write(message.encode('utf-8'))#关闭没有提到的led
 
 def Led_decode(data):
     # 将64位数据分解成指定的位格式
@@ -48,7 +56,7 @@ def Led_decode(data):
 
 
 def Led_logic(decode_data):
-    Led_list = np.zeros([Number_of_leds, 3]).astype(np.uint8)  # 建一个给初始用于传递的数组
+    Led_list = []  # 建一个给初始用于传递的数组
     Led_mode = decode_data[0]
     Led_start_position = decode_data[1]
     Led_RGB = decode_data[3:6]
@@ -60,47 +68,40 @@ def Led_logic(decode_data):
         return Led_list
 
     if (Led_mode == 1):  # 单灯模式
-        Led_list[Led_start_position] = Led_RGB  # 仅一个灯亮，将亮灯的位置赋予rgb值。
+        Led_list.append([Led_start_position,Led_RGB])  # 仅一个灯亮，将亮灯的位置赋予rgb值。
     if (Led_mode == 2):  # 双灯模式
-        Led_end_position = (Led_start_position + Number_of_leds // 2) % Number_of_leds  # 计算尾灯位置
+        Led_end_position =Led_start_position + Number_of_leds // 2  # 计算尾灯位置
         if (Led_RGB_Mode == 0):  # 尾灯自定义
-            Led_list[Led_start_position] = Led_RGB
-            Led_list[Led_end_position]= Led_RGB2
+            Led_list.append([Led_start_position,Led_RGB])
+            Led_list.append([Led_end_position, Led_RGB2])
         if (Led_RGB_Mode == 1):  # 双灯同色
-            Led_list[Led_start_position] = Led_RGB
-            Led_list[Led_end_position] = Led_RGB
+            Led_list.append([Led_start_position,Led_RGB])
+            Led_list.append([Led_end_position, Led_RGB])
         if (Led_RGB_Mode == 2):  # 尾灯白色
-            Led_list[Led_start_position] = Led_RGB
-            Led_list[Led_end_position] = [255, 255, 255]
+            Led_list.append([Led_start_position,Led_RGB])
+            Led_list.append([Led_end_position, [255, 255, 255]])
         if (Led_RGB_Mode == 3):  # 尾灯黑色
-            Led_list[Led_start_position] = Led_RGB
+            Led_list.append([Led_start_position,Led_RGB])
     if (Led_mode == 3):  # 正三角三灯模式
-        Led_position_1=(Led_start_position + Number_of_leds // 3)%Number_of_leds
-        Led_position_2=(Led_start_position - Number_of_leds // 3)%Number_of_leds
-        Led_list[Led_start_position] = Led_RGB
-        Led_list[Led_position_1] = Led_RGB2
-        Led_list[Led_position_2] = Led_RGB2
-    if (Led_mode == 3):  # 正三角三灯模式
-        Led_position_1=(Led_start_position + Number_of_leds // 3)%Number_of_leds
-        Led_position_2=(Led_start_position - Number_of_leds // 3)%Number_of_leds
-        Led_list[Led_start_position] = Led_RGB
-        Led_list[Led_position_1] = Led_RGB2
-        Led_list[Led_position_2] = Led_RGB2
+        Led_list.append([Led_start_position, Led_RGB])
+        Led_list.append([Led_start_position + Number_of_leds // 3, Led_RGB2])
+        Led_list.append([Led_start_position - Number_of_leds // 3, Led_RGB2])
     if (Led_mode == 4):  # 瘦三角三灯模式
-        Led_position_1=(Led_start_position + Number_of_leds // 3)%Number_of_leds
-        Led_position_2=(Led_start_position - Number_of_leds // 3)%Number_of_leds
-        Led_list[Led_start_position%Number_of_leds] = Led_RGB
-        Led_list[(Led_start_position+1)%Number_of_leds] = Led_RGB
-        Led_list[Led_position_1%Number_of_leds] = Led_RGB2
-        Led_list[(Led_position_1+1) % Number_of_leds] = Led_RGB2
-        Led_list[Led_position_2%Number_of_leds] = Led_RGB2
-        Led_list[(Led_position_2+1) % Number_of_leds] = Led_RGB2
-    if (Led_mode == 12):  # 方形模式
-        step = Number_of_leds // 4
-        Led_start_position = Led_start_position % step#方形，起始位置取余数，确定最小索引
+        Led_list.append([Led_start_position, Led_RGB])
+        Led_list.append([Led_start_position+1, Led_RGB])
+        Led_list.append([Led_start_position + Number_of_leds // 3, Led_RGB2])
+        Led_list.append([Led_start_position +1+ Number_of_leds // 3, Led_RGB2])
+        Led_list.append([Led_start_position - Number_of_leds // 3, Led_RGB2])
+        Led_list.append([Led_start_position -1- Number_of_leds // 3, Led_RGB2])
+    if (Led_mode == 5):  # 胖三角三灯模式
         for i in range(4):
-            Led_list[Led_start_position + i * step] = Led_RGB
+            Led_list.append([Led_start_position+i, Led_RGB])
+            Led_list.append([Led_start_position + i + Number_of_leds // 3, Led_RGB2])
+            Led_list.append([Led_start_position + i - Number_of_leds // 3, Led_RGB2])
 
+    if (Led_mode == 12):  # 方形模式
+        for i in range(4):
+            Led_list.append([Led_start_position+ i * Number_of_leds // 4, Led_RGB])
     return Led_list
 
 
@@ -108,9 +109,9 @@ datelist = [0x0312000012103242,0x0112000012103000, 0x0C12000012103000, 0x0212000
             0x0112000000003000]  # 本地测试数据
 while (True):
     for i in range(6):
-        led_values = datelist[0]
+        led_values = datelist[i]
         decoded_data = Led_decode(led_values)
         led_list = Led_logic(decoded_data)
         Led_drive(led_list)
-        time.sleep(2)
+        time.sleep(1.5)
     break
