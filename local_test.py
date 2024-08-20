@@ -18,7 +18,6 @@ def Led_drive(led_values):
         #print(message)
         # rospy.loginfo(f"Sent: {message}")
 
-
 def Led_decode(data):
     # 将64位数据分解成指定的位格式
     if data >= (1 << 64):  # 确保data是64位的
@@ -81,7 +80,21 @@ def Led_logic(decode_data):
         Led_list[Led_start_position] = Led_RGB
         Led_list[Led_position_1] = Led_RGB2
         Led_list[Led_position_2] = Led_RGB2
-
+    if (Led_mode == 3):  # 正三角三灯模式
+        Led_position_1=(Led_start_position + Number_of_leds // 3)%Number_of_leds
+        Led_position_2=(Led_start_position - Number_of_leds // 3)%Number_of_leds
+        Led_list[Led_start_position] = Led_RGB
+        Led_list[Led_position_1] = Led_RGB2
+        Led_list[Led_position_2] = Led_RGB2
+    if (Led_mode == 4):  # 瘦三角三灯模式
+        Led_position_1=(Led_start_position + Number_of_leds // 3)%Number_of_leds
+        Led_position_2=(Led_start_position - Number_of_leds // 3)%Number_of_leds
+        Led_list[Led_start_position%Number_of_leds] = Led_RGB
+        Led_list[(Led_start_position+1)%Number_of_leds] = Led_RGB
+        Led_list[Led_position_1%Number_of_leds] = Led_RGB2
+        Led_list[(Led_position_1+1) % Number_of_leds] = Led_RGB2
+        Led_list[Led_position_2%Number_of_leds] = Led_RGB2
+        Led_list[(Led_position_2+1) % Number_of_leds] = Led_RGB2
     if (Led_mode == 12):  # 方形模式
         step = Number_of_leds // 4
         Led_start_position = Led_start_position % step#方形，起始位置取余数，确定最小索引
