@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 import time
-import serial
+
 import numpy as np
+import serial
 
 Number_of_leds = 24
 
 # 设置串口
 ser = serial.Serial('/dev/ttyACM1', 115200)  # 请根据实际情况修改串口名称和波特率
 
+
 def Led_drive(led_values):
     for i in range(Number_of_leds):
-        r = led_values[i * 3]
-        g = led_values[i * 3 + 1]
-        b = led_values[i * 3 + 2]
+        r, g, b = led_values[i]
         message = f"l {i} {r} {g} {b}\n"
         ser.write(message.encode('utf-8'))
         print(message)
-        #rospy.loginfo(f"Sent: {message}")
+        # rospy.loginfo(f"Sent: {message}")
+
 
 def Led_decode(data):
     # 将64位数据分解成指定的位格式
@@ -46,7 +47,7 @@ def Led_decode(data):
 
 
 def Led_logic(decode_data):
-    Led_list = np.zeros(Number_of_leds * 3).astype(np.uint8)  # 建一个给回调函数的数组
+    Led_list = np.zeros([Number_of_leds, 3]).astype(np.uint8)  # 建一个给回调函数的数组
     Led_mode = decode_data[0]
     Led_start_position = decode_data[1]
     if (Led_start_position > Number_of_leds or Led_start_position < 0):
@@ -55,32 +56,33 @@ def Led_logic(decode_data):
     Led_RGB = decode_data[3:6]
     Led_reserved2 = decode_data[7]
     if (Led_mode == 1):  # 单灯模式
-        Led_list[3 * Led_start_position:3 * Led_start_position + 3] = Led_RGB  # 仅一个灯亮，将亮灯的位置赋予rgb值。
+        Led_list[Led_start_position] = Led_RGB  # 仅一个灯亮，将亮灯的位置赋予rgb值。
     if (Led_mode == 2):  # 双灯模式
         Led_RGB_Mode = decode_data[6]
         Led_end_position = (Led_start_position + int(Number_of_leds / 2)) % Number_of_leds  # 计算尾灯位置
         if (Led_RGB_Mode == 1):  # 双灯同色
-            Led_list[3 * Led_start_position:3 * Led_start_position + 3] = Led_RGB
-            Led_list[3 * Led_end_position:3 * Led_end_position + 3] = Led_RGB
+            Led_list[Led_start_position] = Led_RGB
+            Led_list[Led_end_position] = Led_RGB
         if (Led_RGB_Mode == 2):  # 尾灯白色
-            Led_list[3 * Led_start_position:3 * Led_start_position + 3] = Led_RGB
-            Led_list[3 * Led_end_position:3 * Led_end_position + 3] = [255, 255, 255]
+            Led_list[Led_start_position] = Led_RGB
+            Led_list[Led_end_position] = [255, 255, 255]
         if (Led_RGB_Mode == 3):  # 尾灯黑色
-            Led_list[3 * Led_start_position:3 * Led_start_position + 3] = Led_RGB
+            Led_list[Led_start_position] = Led_RGB
     if (Led_mode == 12):  # 方形模式
         step = int(Number_of_leds / 4)
         Led_start_position = Led_start_position % step
         for i in range(4):
-            print(i)
-            Led_list[3 * (Led_start_position + i * step):3 * (Led_start_position + i * step) + 3] = Led_RGB
-    Led_drive(Led_list)
+            Led_list[Led_start_position + i * step] = Led_RGB
+    return Led_list
 
-datelist=[0x0112000012103000,0x0C12000012103000,0x0212000012101000,0x0212000012102000,0x0212000012103000,0x0112000000003000]
-while(True):
+
+datelist = [0x0112000012103000, 0x0C12000012103000, 0x0212000012101000, 0x0212000012102000, 0x0212000012103000,
+            0x0112000000003000]  # 本地测试数据
+while (True):
     for i in range(6):
-        led_values=datelist[i]
+        led_values = datelist[i]
         decoded_data = Led_decode(led_values)
-        Led_logic(decoded_data)
+        led_list = Led_logic(decoded_data)
+        Led_drive(led_list)
         time.sleep(2)
     break
-
