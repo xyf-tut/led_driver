@@ -23,7 +23,7 @@ def Led_drive(led_values):
     # 使用numpy的集合操作来找出不在Led_index_list中的元素
     Led_off_index_list = np.setdiff1d(np.arange(Number_of_leds), Led_index_list)
     for i in Led_off_index_list:
-        message = f"l {i} {0} {0} {0}\n"# 关闭没有提到的led
+        message = f"l {i} {0} {0} {0}\n"  # 关闭没有提到的led
         ser.write(message.encode('utf-8'))
 
 
@@ -143,8 +143,12 @@ def Led_logic(decode_data):
         Led_list.append([Led_start_position - Number_of_leds // 4, Led_RGB_3])
         Led_list.append([Led_start_position + Number_of_leds // 2, Led_RGB_1])
     if (Led_mode == 14):  # 渐变模式
-        Led_range_color_list = np.linspace(Led_RGB, [0, 0, 0], (Number_of_leds // 2 + 1)).astype(np.uint8)#灯到起点的距离为索引
-        #Led_range_color_list = np.logspace(np.log(Led_RGB), [1, 1, 1], (Number_of_leds // 2 + 1)).astype(np.uint8)
+        if (Led_RGB_Mode == 0):
+            Led_range_color_list = np.linspace(Led_RGB, [0, 0, 0], (Number_of_leds // 2 + 1)).astype(
+                np.uint8)  # 灯到起点的距离为索引
+        else:
+            Led_range_color_list = np.logspace(np.log10(Led_RGB), [0, 0, 0], (Number_of_leds // 2 + 1)).astype(
+                np.uint8)  # 等比例衰减，有可能衰减的有点快
         for i in range(Number_of_leds):
             i_to_start = min(abs(i - Led_start_position), Number_of_leds - abs(i - Led_start_position))
             Led_list.append([i, Led_range_color_list[i_to_start]])
@@ -156,7 +160,7 @@ datelist = [0x0312000012103242, 0x0112000012103000, 0x0C12000012103000, 0x021200
             0x0112000000003000]  # 本地测试数据
 
 while (True):
-    for i in range(6):
+    for i in range(len(datelist)):
         led_values = datelist[i]
         decoded_data = Led_decode(led_values)
         led_list = Led_logic(decoded_data)
