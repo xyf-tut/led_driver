@@ -176,7 +176,7 @@ datelist = [0x01EF000011101000,
 
 while (True):
     for i in range(len(datelist)):
-        led_values = datelist[-1]
+        led_values = datelist[i]
         decoded_data = Led_decode(led_values)
         led_list = Led_logic(decoded_data)
         Led_drive(led_list)
