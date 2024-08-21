@@ -7,7 +7,7 @@ import serial
 Number_of_leds = 24
 
 # 设置串口
-ser = serial.Serial('/dev/ttyACM1', 115200)  # 请根据实际情况修改串口名称和波特率
+ser = serial.Serial('/dev/ttyACM0', 115200)  # 请根据实际情况修改串口名称和波特率
 
 
 def Led_drive(led_values):
@@ -19,6 +19,7 @@ def Led_drive(led_values):
         r, g, b = RGB
         message = f"l {Led_index} {r} {g} {b}\n"
         ser.write(message.encode('utf-8'))
+        print(message)
         # rospy.loginfo(f"Sent: {message}")
     # 使用numpy的集合操作来找出不在Led_index_list中的元素
     Led_off_index_list = np.setdiff1d(np.arange(Number_of_leds), Led_index_list)
@@ -32,7 +33,7 @@ def Led_decode(data):
     if data >= (1 << 64):  # 确保data是64位的
         raise ValueError("Input data must be a 64-bit number.")
     Led_mode = (data >> 56) & 0xFF  # led显示模式
-    Led_start_position = Number_of_leds * ((data >> 48) & 0xFF) // 240  # led起始位置
+    Led_start_position = (Number_of_leds * ((data >> 48) & 0xFF)) // 240  # led起始位置
     Led_reserved1 = (data >> 32) & 0xFFFF  # 第一个预留位，预留16位
     Led_decode_data = [Led_mode, Led_start_position, Led_reserved1]  # 解码得到的值以数组形式保存与返回
     if (Led_mode in [6, 7, 8, 9, 13]):  # 在6 7 8 9 13模式下解码有不同
@@ -110,6 +111,7 @@ def Led_logic(decode_data):
         Led_list.append([Led_start_position, Led_RGB_1])
         Led_list.append([Led_position_2, Led_RGB_2])
         Led_list.append([Led_position_3, Led_RGB_3])
+        print('a', Led_start_position, 'b', Led_position_2, 'c', Led_position_3)
     if (Led_mode == 7):  # 三角三灯模式
         Led_list.append([Led_start_position, Led_RGB_1])
         Led_list.append([Led_start_position + Number_of_leds // 3, Led_RGB_2])
@@ -155,15 +157,27 @@ def Led_logic(decode_data):
     return Led_list
 
 
-datelist = [0x0312000012103242, 0x0112000012103000, 0x0C12000012103000, 0x0212000012101000, 0x0212000012102000,
-            0x0212000012103000,
+datelist = [0x01EF000011101000,
+            0x0212000012101000,
+            0x0312000012103242,
+            0x0412000012103242,
+            0x0512000012103242,
+            0x0612334212103242,
+            0x0712314112103242,
+            0x0812314112103242,
+            0x0912314112103242,
+            0x0A12000412103000,
+            0x0B12000412103000,
+            0x0C12000012103000,
+            0x0D12314112103242,
+            0x0E12000012100000,
+            0x0E12000012101000,
             0x0112000000003000]  # 本地测试数据
 
 while (True):
     for i in range(len(datelist)):
-        led_values = datelist[i]
+        led_values = datelist[-1]
         decoded_data = Led_decode(led_values)
         led_list = Led_logic(decoded_data)
         Led_drive(led_list)
         time.sleep(1.5)
-    break
