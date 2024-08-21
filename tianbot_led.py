@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-
+import serial
 import numpy as np
 import rospy
-import serial
 from std_msgs.msg import Int32
 
 Number_of_leds = 24
@@ -12,7 +11,6 @@ ser = serial.Serial('/dev/ttyACM1', 115200)  # 请根据实际情况修改串口
 
 Led_Mode_state = 0
 Led_RGB_state = 0
-
 
 def Led_callback(led_values):
     decoded_data = Led_decode(led_values)
@@ -36,7 +34,6 @@ def led_rgb_callback(data):
     if (not Led_Mode_state == 0):
         Led_receive_data = Led_RGB_state + Led_Mode_state << 32
         Led_callback(Led_receive_data)
-
 
 def Led_drive(led_values):
     global Led_Mode_state
